@@ -2,7 +2,7 @@
 using System.Text.Json;
 using ManaBoxImporter.Models.Import;
 
-Console.WriteLine("ManaBoxImporter 1.0");
+Console.WriteLine("ManaBoxImporter 1.1");
 
 if (args?.Length != 1)
 {
@@ -24,7 +24,7 @@ var httpClient = new HttpClient
     BaseAddress = new Uri("https://api.scryfall.com/")
 };
 
-var csv = "Name,Scryfall ID,Quantity" + Environment.NewLine;
+var csv = "Name,Set code,Set name,Collector number,Scryfall ID,Quantity" + Environment.NewLine;
 
 foreach (var (card, index) in importModel.Cards.Select((value, i) => (value, i)))
 {
@@ -37,20 +37,29 @@ foreach (var (card, index) in importModel.Cards.Select((value, i) => (value, i))
             continue;
         }
 
-        Console.WriteLine($"({index}/{importModel.Cards.Count}): Exporting card {cardScryfall.Name}");
+        // Ignore Alchemy cards
+        if (cardScryfall.Name.StartsWith("A-") ||
+            cardScryfall.SetCode.Equals("y22"))
+        {
+            continue;
+        }
 
-        csv += $"{cardScryfall.Name},{cardScryfall.Id},{card.Quantity}" + Environment.NewLine;
+        Console.WriteLine($"({index + 1}/{importModel.Cards.Count}): Exporting card {cardScryfall.Name}");
+
+        csv += $"\"{cardScryfall.Name}\",{cardScryfall.SetCode},{cardScryfall.SetName},{cardScryfall.CollectorNumber},{cardScryfall.Id},{card.Quantity}" + Environment.NewLine;
     }
     catch (Exception e)
     {
         Console.WriteLine(e.Message);
+        Console.WriteLine($"Error exporting card {card.GroupId}");
     }
 
     Thread.Sleep(50);
 }
 
-var exportFile = Path.ChangeExtension(fileName, "csv");
+var exportFilePath = Path.ChangeExtension(fileName, "csv");
 
-await File.WriteAllTextAsync(exportFile, csv);
+await File.WriteAllTextAsync(exportFilePath, csv);
 
-return 0;
+Console.WriteLine($"Export completed!");
+Console.WriteLine($"CSV available at {exportFilePath}");
