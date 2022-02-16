@@ -4,8 +4,13 @@ namespace ManaBoxImporter.Models.Import
 {
     public class CardScryfall
     {
+        [JsonPropertyName("id")]
         public Guid Id { get; set; }
 
+        [JsonPropertyName("arena_id")]
+        public int ArenaId { get; set; }
+
+        [JsonPropertyName("name")]
         public string Name { get; set; } = string.Empty;
 
         [JsonPropertyName("set")]

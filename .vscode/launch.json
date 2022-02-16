@@ -10,7 +10,8 @@
             "request": "launch",
             "preLaunchTask": "build",
             "program": "${workspaceFolder}/bin/Debug/net6.0/ManaBoxImporter.dll",
-            "args": ["C:\\Users\\sboul\\Downloads\\mtga-collection-2022-02-13.json"],
+            "args": ["-c C:\\Users\\sboul\\Downloads\\mtga-collection-2022-02-13.json",
+                     "-s C:\\Users\\sboul\\Downloads\\default-cards-20220216100248.json"],
             "cwd": "${workspaceFolder}",
             "console": "internalConsole",
             "stopAtEntry": false
