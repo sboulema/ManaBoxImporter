@@ -3,8 +3,9 @@ using System.Text.Json;
 using CommandLine;
 using ManaBoxImporter.Models;
 using ManaBoxImporter.Models.Import;
+using ShellProgressBar;
 
-Console.WriteLine("ManaBoxImporter 1.2");
+Console.WriteLine("ManaBoxImporter 1.3");
 
 var _options = new Options();
 
@@ -37,11 +38,9 @@ var parallelOptions = new ParallelOptions
     MaxDegreeOfParallelism = string.IsNullOrEmpty(_options.scryfallJsonFilePath) ? 1 : 3
 };
 
-var lockTarget = new object();
-
-var progress = 1;
-
 var csv = "Name,Set code,Set name,Collector number,Scryfall ID,Quantity" + Environment.NewLine;
+
+using var progressBar = new ProgressBar(importModel.Cards.Count, "Initial message");
 
 await Parallel.ForEachAsync(importModel.Cards, parallelOptions, async (card, cancellationToken) =>
 {
@@ -58,11 +57,11 @@ await Parallel.ForEachAsync(importModel.Cards, parallelOptions, async (card, can
         if (cardScryfall.Name.StartsWith("A-") ||
             cardScryfall.SetCode.Equals("y22"))
         {
-            Console.WriteLine($"({progress}/{importModel.Cards.Count}): Ignoring Alchemy card {cardScryfall.Name}");
+            progressBar.Tick($"({progressBar.CurrentTick}/{progressBar.MaxTicks}): Ignoring Alchemy card {cardScryfall.Name}");
             return;
         }
 
-        Console.WriteLine($"({progress}/{importModel.Cards.Count}): Exporting card {cardScryfall.Name}");
+        progressBar.Tick($"({progressBar.CurrentTick}/{progressBar.MaxTicks}): Exporting card {cardScryfall.Name}");
 
         csv += $"\"{cardScryfall.Name}\",{cardScryfall.SetCode},{cardScryfall.SetName},{cardScryfall.CollectorNumber},{cardScryfall.Id},{card.Quantity}" + Environment.NewLine;
     }
@@ -73,16 +72,14 @@ await Parallel.ForEachAsync(importModel.Cards, parallelOptions, async (card, can
     }
     finally
     {
-        lock (lockTarget) {
-            progress++;
-        }
-
         if (!string.IsNullOrEmpty(_options.scryfallJsonFilePath))
         {
             Thread.Sleep(50);
         }
     }
 });
+
+progressBar.Dispose();
 
 var exportFilePath = Path.ChangeExtension(_options.CollectionFilePath, "csv");
 
