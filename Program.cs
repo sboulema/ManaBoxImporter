@@ -5,7 +5,7 @@ using ManaBoxImporter.Models;
 using ManaBoxImporter.Models.Import;
 using ShellProgressBar;
 
-Console.WriteLine("ManaBoxImporter 1.3");
+Console.WriteLine("ManaBoxImporter 1.4");
 
 var _options = new Options();
 
@@ -54,8 +54,7 @@ await Parallel.ForEachAsync(importModel.Cards, parallelOptions, async (card, can
         }
 
         // Ignore Alchemy cards
-        if (cardScryfall.Name.StartsWith("A-") ||
-            cardScryfall.SetCode.Equals("y22"))
+        if (IsAlchemy(cardScryfall))
         {
             progressBar.Tick($"({progressBar.CurrentTick}/{progressBar.MaxTicks}): Ignoring Alchemy card {cardScryfall.Name}");
             return;
@@ -99,4 +98,10 @@ async Task<CardScryfall?> GetCard(int arenaId, List<CardScryfall>? cards, HttpCl
     }
 
     return cards.FirstOrDefault(card => card.ArenaId == arenaId);
+}
+
+bool IsAlchemy(CardScryfall card) {
+    var alchemySets = new List<string>{ "y22", "ymid", "yneo" };
+
+    return card.Name.StartsWith("A-") || alchemySets.Contains(card.SetCode);
 }
