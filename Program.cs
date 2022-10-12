@@ -5,7 +5,7 @@ using ManaBoxImporter.Models;
 using ManaBoxImporter.Models.Import;
 using ShellProgressBar;
 
-Console.WriteLine("ManaBoxImporter 1.4");
+Console.WriteLine("ManaBoxImporter 1.5");
 
 var _options = new Options();
 
@@ -38,6 +38,8 @@ var parallelOptions = new ParallelOptions
     MaxDegreeOfParallelism = string.IsNullOrEmpty(_options.scryfallJsonFilePath) ? 1 : 3
 };
 
+var log = string.Empty;
+
 var csv = "Name,Set code,Set name,Collector number,Scryfall ID,Quantity" + Environment.NewLine;
 
 using var progressBar = new ProgressBar(importModel.Cards.Count, "Initial message");
@@ -56,6 +58,7 @@ await Parallel.ForEachAsync(importModel.Cards, parallelOptions, async (card, can
         // Ignore Alchemy cards
         if (IsAlchemy(cardScryfall))
         {
+            log += $"Ignoring Alchemy card {cardScryfall.Name}" + Environment.NewLine;
             progressBar.Tick($"({progressBar.CurrentTick}/{progressBar.MaxTicks}): Ignoring Alchemy card {cardScryfall.Name}");
             return;
         }
@@ -68,6 +71,7 @@ await Parallel.ForEachAsync(importModel.Cards, parallelOptions, async (card, can
     {
         Console.WriteLine(e.Message);
         Console.WriteLine($"Error exporting card {card.GroupId}");
+        log += $"Error exporting card {card.GroupId}" + Environment.NewLine;
     }
     finally
     {
@@ -87,6 +91,8 @@ await File.WriteAllTextAsync(exportFilePath.Trim(), csv);
 Console.WriteLine($"Export completed!");
 Console.WriteLine($"CSV available at {exportFilePath}");
 
+await WriteLogFile();
+
 async Task<T?> ParseFile<T>(string path)
     => JsonSerializer.Deserialize<T>(await File.ReadAllTextAsync(path.Trim()));
 
@@ -104,4 +110,17 @@ bool IsAlchemy(CardScryfall card) {
     var alchemySets = new List<string>{ "y22", "ymid", "yneo" };
 
     return card.Name.StartsWith("A-") || alchemySets.Contains(card.SetCode);
+}
+
+async Task WriteLogFile() {
+    if (_options?.enableLogFile != true ||
+        string.IsNullOrEmpty(log)) {
+        return;
+    }
+
+    var logFilePath = Path.ChangeExtension(_options!.CollectionFilePath, "log");
+
+    await File.WriteAllTextAsync(logFilePath.Trim(), log);
+
+    Console.WriteLine($"Log available at {logFilePath}");
 }

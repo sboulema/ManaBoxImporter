@@ -9,4 +9,7 @@ public class Options
 
     [Option('s', "scryfall", Required = false, HelpText = "Path to Scryfall json cards file.")]
     public string scryfallJsonFilePath { get; set; } = string.Empty;
+
+    [Option('l', "log", Required = false, HelpText = "Write error log to file.")]
+    public bool enableLogFile { get; set; }
 }
