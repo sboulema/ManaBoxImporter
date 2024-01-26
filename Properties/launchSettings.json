@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ManaBoxImporter": {
+      "commandName": "Project",
+      "commandLineArgs": "-v \"C:\\Users\\sboulema\\Downloads\\collection_2024-01-25.csv\""
+    }
+  }
+}

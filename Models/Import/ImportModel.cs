@@ -1,10 +1,8 @@
-using System.Text.Json.Serialization;
+﻿namespace ManaBoxImporter.Models.Import;
 
-namespace ManaBoxImporter.Models.Import
+public class ImportModel
 {
-    public class ImportModel
-    {
-        [JsonPropertyName("cards")]
-        public List<CardImport> Cards { get; set; } = new();
-    }
+    public List<CardImport> Cards { get; set; } = [];
+
+    public string CollectionFilePath { get; set; } = string.Empty;
 }
