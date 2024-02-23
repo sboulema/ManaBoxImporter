@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using System.Collections.Concurrent;
+using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using CommandLine;
@@ -7,7 +8,7 @@ using ManaBoxImporter.Models;
 using ManaBoxImporter.Models.Import;
 using ShellProgressBar;
 
-Console.WriteLine("ManaBoxImporter 1.6");
+Console.WriteLine("ManaBoxImporter 1.7");
 
 var _options = new Options();
 
@@ -25,7 +26,8 @@ if (importModel == null ||
 
 var scryfallCards = new List<CardScryfall>();
 
-if (!string.IsNullOrEmpty(_options.ScryfallJsonFilePath))
+if (!string.IsNullOrEmpty(_options.ScryfallJsonFilePath) &&
+	importModel.CollectionFilePathExtension != ".csv")
 {
 	Console.WriteLine("Loading Scryfall database from file");
 	scryfallCards = await ParseFile<List<CardScryfall>>(_options.ScryfallJsonFilePath);
@@ -38,12 +40,12 @@ var httpClient = new HttpClient
 
 var parallelOptions = new ParallelOptions
 {
-	MaxDegreeOfParallelism = string.IsNullOrEmpty(_options.ScryfallJsonFilePath) ? 1 : 3
+	MaxDegreeOfParallelism = string.IsNullOrEmpty(_options.ScryfallJsonFilePath) ? 1 : 10
 };
 
 var log = string.Empty;
 
-var csv = "Name,Set code,Set name,Collector number,Scryfall ID,Quantity" + Environment.NewLine;
+var cardRecords = new ConcurrentBag<CardImport>();
 
 using var progressBar = new ProgressBar(importModel.Cards.Count, "Initial message");
 
@@ -77,7 +79,7 @@ await Parallel.ForEachAsync(importModel.Cards, parallelOptions, async (card, can
 
 		progressBar.Tick($"({progressBar.CurrentTick}/{progressBar.MaxTicks}): Exporting card {card.Name}");
 
-		csv += $"\"{card.Name}\",{card.SetCode},{card.SetName},{card.CollectorNumber},{card.ScryFallId},{card.Quantity}" + Environment.NewLine;
+		cardRecords.Add(card);
 	}
 	catch (Exception e)
 	{
@@ -96,9 +98,11 @@ await Parallel.ForEachAsync(importModel.Cards, parallelOptions, async (card, can
 
 progressBar.Dispose();
 
-var exportFilePath = GetExportFilePath(importModel);
+var exportFilePath = GetExportFilePath();
 
-await File.WriteAllTextAsync(exportFilePath.Trim(), csv);
+using var writer = new StreamWriter(exportFilePath);
+using var csv = new CsvWriter(writer, CultureInfo.InvariantCulture);
+csv.WriteRecords(cardRecords);
 
 Console.WriteLine($"Export completed!");
 Console.WriteLine($"CSV available at {exportFilePath}");
@@ -149,7 +153,9 @@ async Task WriteLogFile()
 
 async Task<ImportModel?> GetCollection()
 {
-	if (!string.IsNullOrEmpty(_options.CollectionFilePath))
+	var extension = Path.GetExtension(_options.CollectionFilePath);
+	
+	if (extension == ".json")
 	{
 		var json = await File.ReadAllTextAsync(_options.CollectionFilePath.Trim());
 		var importModel = JsonSerializer.Deserialize<ImportModelJson>(json);
@@ -162,13 +168,13 @@ async Task<ImportModel?> GetCollection()
 					Quantity = card.Quantity
 				})
 				.ToList() ?? [],
-			CollectionFilePath = _options.CollectionFilePath
+			CollectionFilePathExtension = extension,
 		};
 	}
 
-	if (!string.IsNullOrEmpty(_options.CSVCollectionFilePath))
+	if (extension == ".csv")
 	{
-		using var reader = new StreamReader(_options.CSVCollectionFilePath.Trim());
+		using var reader = new StreamReader(_options.CollectionFilePath.Trim());
 		using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
 
 		return new()
@@ -183,18 +189,18 @@ async Task<ImportModel?> GetCollection()
 					Quantity = card.Quantity
 				})
 				.ToList(),
-			CollectionFilePath = _options.CSVCollectionFilePath
+			CollectionFilePathExtension = extension,
 		};
 	}
 
 	return null;
 }
 
-string GetExportFilePath(ImportModel importModel)
+string GetExportFilePath()
 {
 	var exportFilePath = Path.Combine(
-		Path.GetDirectoryName(importModel.CollectionFilePath),
-		$"{Path.GetFileNameWithoutExtension(importModel.CollectionFilePath)}-{Guid.NewGuid()}.csv");
+		Path.GetDirectoryName(_options.CollectionFilePath),
+		$"{Path.GetFileNameWithoutExtension(_options.CollectionFilePath)}-{Guid.NewGuid()}.csv");
 
-	return exportFilePath;
+	return exportFilePath.Trim();
 }

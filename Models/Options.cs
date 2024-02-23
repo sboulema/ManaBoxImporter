@@ -4,11 +4,8 @@ namespace ManaBoxImporter.Models;
 
 public class Options
 {
-    [Option('c', "collection", Required = false, HelpText = "Path to json collection file.")]
+    [Option('c', "collection", Required = true, HelpText = "Path to json/csv collection file.")]
     public string CollectionFilePath { get; set; } = string.Empty;
-
-    [Option('v', "csv-collection", Required = false, HelpText = "Path to csv collection file.")]
-    public string CSVCollectionFilePath { get; set; } = string.Empty;
 
     [Option('s', "scryfall", Required = false, HelpText = "Path to Scryfall json cards file.")]
     public string ScryfallJsonFilePath { get; set; } = string.Empty;
