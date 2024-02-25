@@ -8,7 +8,7 @@ using ManaBoxImporter.Models;
 using ManaBoxImporter.Models.Import;
 using ShellProgressBar;
 
-Console.WriteLine("ManaBoxImporter 1.7");
+Console.WriteLine("ManaBoxImporter 1.8");
 
 var _options = new Options();
 
@@ -77,6 +77,8 @@ await Parallel.ForEachAsync(importModel.Cards, parallelOptions, async (card, can
 			return;
 		}
 
+		FixCard(card);
+
 		progressBar.Tick($"({progressBar.CurrentTick}/{progressBar.MaxTicks}): Exporting card {card.Name}");
 
 		cardRecords.Add(card);
@@ -123,17 +125,40 @@ async Task<CardScryfall?> GetCard(int arenaId, List<CardScryfall>? cards, HttpCl
 }
 
 bool IsAlchemy(CardImport card)
-{
-	if (card.SetCode.StartsWith("Y22", StringComparison.OrdinalIgnoreCase) ||
-		card.SetCode.StartsWith("Y23", StringComparison.OrdinalIgnoreCase) ||
-		card.SetCode.StartsWith("Y24", StringComparison.OrdinalIgnoreCase) ||
-		card.SetCode.StartsWith("AHA", StringComparison.OrdinalIgnoreCase) ||
-		card.Name.StartsWith("A-", StringComparison.OrdinalIgnoreCase))
-	{
-		return true;
-	}
+	=> card.Name.StartsWith("A-", StringComparison.OrdinalIgnoreCase);
 
-	return false;
+void FixCard(CardImport card) 
+{
+	var oldSetCode = card.SetCode;
+	
+	card.SetCode = card.SetCode
+		.Replace("AHA", "HA")
+		.Replace("Y22-MID", "YMID")
+		.Replace("Y23_DMU", "YDMU")
+		.Replace("Y22_NEO", "YNEO")
+		.Replace("Y22_SNC", "YSNC")
+		.Replace("Y23_BRO", "YBRO")
+		.Replace("Y23_ONE", "YONE")
+		.Replace("Y24_WOE", "YWOE")
+		.Replace("Y24_LCI", "YLCI");
+	
+	if(oldSetCode != card.SetCode) 
+	{
+		log += $"Fixing set code to '{card.SetCode}' for card '{card.Name}'" + Environment.NewLine;
+	}
+	
+	var oldCardName  = card.Name;
+	
+	card.Name = card.Name
+		.Replace("Lothlorien Lookout", "Lothlórien Lookout")
+		.Replace("Arwen Undomiel", "Arwen Undómiel")
+		.Replace("Bartolome del Presidio", "Bartolomé del Presidio")
+		.Replace("Cathartic Re", "Cathartic Reunion");
+	
+	if (oldCardName != card.Name) 
+	{
+		log += $"Fixing card name '{card.Name}'" + Environment.NewLine;
+	}
 }
 
 async Task WriteLogFile()
