@@ -1,22 +1,22 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
-            "name": ".NET Core Launch (console)",
+            "name": ".NET Launch (console)",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
             "program": "${workspaceFolder}/bin/Debug/net8.0/ManaBoxImporter.dll",
-            "args": ["-c C:\\Users\\sboul\\Downloads\\collection.csv", "-l"],
+            // "args": ["-c C:\\Users\\sboul\\Downloads\\collection.csv", "-l"],
+            "args": ["-s C:\\Users\\sboul\\Downloads\\default-cards-20240225100458.json",
+                     "-o C:\\Users\\sboul\\Downloads\\collection-12.csv",
+                     "-l"],
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "stopAtEntry": false
         },
         {
-            "name": ".NET Core Attach",
+            "name": ".NET Attach",
             "type": "coreclr",
             "request": "attach"
         }

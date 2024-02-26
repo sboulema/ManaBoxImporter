@@ -1,20 +1,24 @@
-﻿using System.Collections.Concurrent;
-using System.Globalization;
-using System.Net.Http.Json;
+﻿using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using CommandLine;
 using CsvHelper;
 using ManaBoxImporter.Models;
 using ManaBoxImporter.Models.Import;
-using ShellProgressBar;
 
-Console.WriteLine("ManaBoxImporter 1.8");
+Console.WriteLine("ManaBoxImporter 1.9");
 
 var _options = new Options();
 
 Parser.Default
 	.ParseArguments<Options>(args)
 	.WithParsed(o => _options = o);
+	
+var _jsonSerializerOptions = new JsonSerializerOptions 
+{
+	PropertyNameCaseInsensitive = true,
+	NumberHandling = JsonNumberHandling.AllowReadingFromString
+};
 
 var importModel = await GetCollection();
 
@@ -24,144 +28,163 @@ if (importModel == null ||
 	Environment.Exit(-2);
 }
 
-var scryfallCards = new List<CardScryfall>();
+var scryfallCards = GetScryfallCards();
 
-if (!string.IsNullOrEmpty(_options.ScryfallJsonFilePath) &&
-	importModel.CollectionFilePathExtension != ".csv")
+if (scryfallCards?.Any() != true) 
 {
-	Console.WriteLine("Loading Scryfall database from file");
-	scryfallCards = await ParseFile<List<CardScryfall>>(_options.ScryfallJsonFilePath);
+	Console.WriteLine("Unable to load Scryfall database");
+	Environment.Exit(-2);
 }
 
-var httpClient = new HttpClient
-{
-	BaseAddress = new Uri("https://api.scryfall.com/")
-};
+var cards17Lands = await Get17LandsCards();
 
-var parallelOptions = new ParallelOptions
+if (cards17Lands?.Any() != true) 
 {
-	MaxDegreeOfParallelism = string.IsNullOrEmpty(_options.ScryfallJsonFilePath) ? 1 : 10
-};
+	Console.WriteLine("Unable to load 17Lands database");
+	Environment.Exit(-2);
+}
 
 var log = string.Empty;
 
-var cardRecords = new ConcurrentBag<CardImport>();
-
-using var progressBar = new ProgressBar(importModel.Cards.Count, "Initial message");
-
-await Parallel.ForEachAsync(importModel.Cards, parallelOptions, async (card, cancellationToken) =>
-{
-	try
-	{
-		if (card.GroupId != null)
+var collection = importModel.Cards
+	.Join(cards17Lands,
+		collectionCard => collectionCard.GroupId,
+		card17Lands => card17Lands.ArenaId,
+		(collectionCard, cards17Lands) => new CardImport 
 		{
-			var cardScryfall = await GetCard(card.GroupId.Value, scryfallCards, httpClient);
-
-			if (cardScryfall == null)
-			{
-				return;
-			}
-
-			card.Name = cardScryfall.Name;
-			card.SetCode = cardScryfall.SetCode;
-			card.SetName = cardScryfall.SetName;
-			card.CollectorNumber = cardScryfall.CollectorNumber;
-			card.ScryFallId = cardScryfall.Id;
-		}
-
-		// Ignore Alchemy cards
-		if (IsAlchemy(card))
+			GroupId = collectionCard.GroupId,
+			Name = cards17Lands.Name,
+			Quantity = collectionCard.Quantity,
+		})
+	.GroupJoin(
+		scryfallCards,
+		collectionCard => collectionCard.GroupId,
+		scryfallCards => scryfallCards.ArenaId, 
+		(collectionCard, scryfallCard) => new
 		{
-			log += $"Ignoring Alchemy card {card.Name}" + Environment.NewLine;
-			progressBar.Tick($"({progressBar.CurrentTick}/{progressBar.MaxTicks}): Ignoring Alchemy card {card.Name}");
-			return;
-		}
-
-		FixCard(card);
-
-		progressBar.Tick($"({progressBar.CurrentTick}/{progressBar.MaxTicks}): Exporting card {card.Name}");
-
-		cardRecords.Add(card);
-	}
-	catch (Exception e)
-	{
-		Console.WriteLine(e.Message);
-		Console.WriteLine($"Error exporting card {card.GroupId}");
-		log += $"Error exporting card {card.GroupId}" + Environment.NewLine;
-	}
-	finally
-	{
-		if (!string.IsNullOrEmpty(_options.ScryfallJsonFilePath))
+			CollectionCard = collectionCard,
+			ScryfallCard = scryfallCard,
+		})
+	.SelectMany(
+		cardMatch => cardMatch.ScryfallCard.DefaultIfEmpty(),
+		(cardMatch, scryfallCard) => new CardImport 
 		{
-			Thread.Sleep(50);
+			GroupId = cardMatch.CollectionCard.GroupId,
+			Name = cardMatch.CollectionCard.Name,
+			Quantity = cardMatch.CollectionCard.Quantity,
+			SetCode = scryfallCard?.SetCode ?? string.Empty,
+			SetName = scryfallCard?.SetName ?? string.Empty,
+			CollectorNumber = scryfallCard?.CollectorNumber ?? string.Empty,
+			ScryFallId = scryfallCard?.Id,
 		}
-	}
-});
+	)
+	.Where(card => !IsAlchemy(card));
+		
+var alchemyCollection = collection
+	.Where(card => card.ScryFallId == null)
+	.Join(scryfallCards.Where(scryfallCard => scryfallCard.SetType == "alchemy"),
+		collectionCard => collectionCard.Name,
+		scryfallCard => scryfallCard.Name,
+		(collectionCard, scryfallCard) => new CardImport 
+		{
+			GroupId = collectionCard.GroupId,
+			Name = collectionCard.Name,
+			Quantity = collectionCard.Quantity,
+			SetCode = scryfallCard.SetCode,
+			SetName = scryfallCard.SetName,
+			CollectorNumber = scryfallCard.CollectorNumber,
+			ScryFallId = scryfallCard.Id,
+		});
 
-progressBar.Dispose();
+collection = collection
+	.Where(collectionCard => collectionCard.ScryFallId != null)
+	.Concat(alchemyCollection)
+	.DistinctBy(collectioncard => collectioncard.ScryFallId);
+		
+	// .SelectMany(
+	// 	collectionCard => scryfallCards
+	// 		.Where(scryfallCard => collectionCard.GroupId == scryfallCard.ArenaId ||
+	// 							   collectionCard.Name == scryfallCard.Name),
+	// 	(collectionCard, scryfallCard) => new CardImport
+	// 	{
+	// 		GroupId = collectionCard.GroupId,
+	// 		Name = collectionCard.Name,
+	// 		Quantity = collectionCard.Quantity,
+	// 		SetCode = scryfallCard.SetCode,
+	// 		SetName = scryfallCard.SetName,
+	// 		CollectorNumber = scryfallCard.CollectorNumber,
+	// 		ScryFallId = scryfallCard.Id,
+	// 	});
+		
+// var collection2 =
+// 	from card in collection
+// 	from scryfallCard in scryfallCards
+// 	where card.GroupId == scryfallCard.ArenaId ||
+// 		  card.Name == scryfallCard.Name
+// 	select new CardImport 
+// 	{
+// 		GroupId = card.GroupId,
+// 		Name = card.Name,
+// 		Quantity = card.Quantity,
+// 		SetCode = scryfallCard.SetCode,
+// 		SetName = scryfallCard.SetName,
+// 		CollectorNumber = scryfallCard.CollectorNumber,
+// 		ScryFallId = scryfallCard.Id,
+// 	};	
+	
 
-var exportFilePath = GetExportFilePath();
+// var collection = importModel.Cards
+// 	.Join(scryfallCards,
+// 		collectionCard => collectionCard.GroupId,
+// 		scryfallCard => scryfallCard.ArenaId,
+// 		(collectionCard, scryfallCard) => new CardImport 
+// 		{
+// 			Name = scryfallCard.Name,
+// 			SetCode = scryfallCard.SetCode,
+// 			SetName = scryfallCard.SetName,
+// 			CollectorNumber = scryfallCard.CollectorNumber,
+// 			ScryFallId = scryfallCard.Id,
+// 			Quantity = collectionCard.Quantity
+// 		})
+// 	.Where(card => !IsAlchemy(card));
+	
+// var collection = importModel.Cards
+// 	.GroupJoin(
+// 		cards17Lands,
+// 		collectionCard => collectionCard.GroupId,
+// 		card17Lands => card17Lands.ArenaId, 
+// 		(collectionCard, card17Lands) => new
+// 		{
+// 			CollectionCard = collectionCard,
+// 			Card17Lands = card17Lands
+// 		})
+// 	.SelectMany(
+// 		cardMatch => cardMatch.Card17Lands.DefaultIfEmpty(),
+// 		(cardMatch, card17Lands) => new CardImport 
+// 		{
+// 			GroupId = cardMatch.CollectionCard.GroupId,
+// 			Name = card17Lands?.Name ?? string.Empty,
+// 			SetCode = card17Lands?.SetCode ?? string.Empty,
+// 			Quantity = cardMatch.CollectionCard.Quantity
+// 		}
+// 	)
+// 	.Where(card => !IsAlchemy(card));	
 
-using var writer = new StreamWriter(exportFilePath);
+var outputFilePath = GetOutputFilePath(importModel.Timestamp);
+
+using var writer = new StreamWriter(outputFilePath);
 using var csv = new CsvWriter(writer, CultureInfo.InvariantCulture);
-csv.WriteRecords(cardRecords);
+csv.WriteRecords(collection);
 
 Console.WriteLine($"Export completed!");
-Console.WriteLine($"CSV available at {exportFilePath}");
+Console.WriteLine($"CSV available at '{outputFilePath}'");
 
-await WriteLogFile();
-
-async Task<T?> ParseFile<T>(string path)
-	=> JsonSerializer.Deserialize<T>(await File.ReadAllTextAsync(path.Trim()));
-
-async Task<CardScryfall?> GetCard(int arenaId, List<CardScryfall>? cards, HttpClient httpClient)
-{
-	if (cards?.Any() != true)
-	{
-		return await httpClient.GetFromJsonAsync<CardScryfall>($"cards/arena/{arenaId}");
-	}
-
-	return cards.FirstOrDefault(card => card.ArenaId == arenaId);
-}
+await WriteLogFile(outputFilePath);
 
 bool IsAlchemy(CardImport card)
 	=> card.Name.StartsWith("A-", StringComparison.OrdinalIgnoreCase);
 
-void FixCard(CardImport card) 
-{
-	var oldSetCode = card.SetCode;
-	
-	card.SetCode = card.SetCode
-		.Replace("AHA", "HA")
-		.Replace("Y22-MID", "YMID")
-		.Replace("Y23_DMU", "YDMU")
-		.Replace("Y22_NEO", "YNEO")
-		.Replace("Y22_SNC", "YSNC")
-		.Replace("Y23_BRO", "YBRO")
-		.Replace("Y23_ONE", "YONE")
-		.Replace("Y24_WOE", "YWOE")
-		.Replace("Y24_LCI", "YLCI");
-	
-	if(oldSetCode != card.SetCode) 
-	{
-		log += $"Fixing set code to '{card.SetCode}' for card '{card.Name}'" + Environment.NewLine;
-	}
-	
-	var oldCardName  = card.Name;
-	
-	card.Name = card.Name
-		.Replace("Lothlorien Lookout", "Lothlórien Lookout")
-		.Replace("Arwen Undomiel", "Arwen Undómiel")
-		.Replace("Bartolome del Presidio", "Bartolomé del Presidio")
-		.Replace("Cathartic Re", "Cathartic Reunion");
-	
-	if (oldCardName != card.Name) 
-	{
-		log += $"Fixing card name '{card.Name}'" + Environment.NewLine;
-	}
-}
-
-async Task WriteLogFile()
+async Task WriteLogFile(string outputFilePath)
 {
 	if (_options?.EnableLogFile != true ||
 		string.IsNullOrEmpty(log))
@@ -169,63 +192,77 @@ async Task WriteLogFile()
 		return;
 	}
 
-	var logFilePath = Path.ChangeExtension(_options!.CollectionFilePath.Trim(), "log");
+	var logFilePath = Path.ChangeExtension(outputFilePath, "log");
 
 	await File.WriteAllTextAsync(logFilePath, log);
 
-	Console.WriteLine($"Log available at {logFilePath}");
+	Console.WriteLine($"Log available at '{logFilePath}'");
 }
 
 async Task<ImportModel?> GetCollection()
 {
-	var extension = Path.GetExtension(_options.CollectionFilePath);
+	var playerLogPath = "%appdata%\\..\\LocalLow\\Wizards Of The Coast\\MTGA\\Player.log";
+	playerLogPath = Environment.ExpandEnvironmentVariables(playerLogPath);
+	var playerLogLines = await File.ReadAllLinesAsync(playerLogPath);
+	var inventoryLine = playerLogLines.FirstOrDefault(line => line.StartsWith("[MTGA.Pro Logger] **Collection**"));
 	
-	if (extension == ".json")
+	if (string.IsNullOrEmpty(inventoryLine)) 
 	{
-		var json = await File.ReadAllTextAsync(_options.CollectionFilePath.Trim());
-		var importModel = JsonSerializer.Deserialize<ImportModelJson>(json);
-		return new()
-		{
-			Cards = importModel?.Cards
-				.Select(card => new CardImport
-				{
-					GroupId = card.GroupId,
-					Quantity = card.Quantity
-				})
-				.ToList() ?? [],
-			CollectionFilePathExtension = extension,
-		};
+		Console.WriteLine("Unable to find inventory in player log");
+		return new();
 	}
-
-	if (extension == ".csv")
+	
+	var inventoryJson = inventoryLine.Replace("[MTGA.Pro Logger] **Collection**", string.Empty);
+	var inventory = JsonSerializer.Deserialize<MTGAProInventoryImport>(inventoryJson, _jsonSerializerOptions);
+	
+	if (inventory == null) 
 	{
-		using var reader = new StreamReader(_options.CollectionFilePath.Trim());
-		using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
-
-		return new()
-		{
-			Cards = csv
-				.GetRecords<CardImportCsv>()
-				.Select(card => new CardImport
-				{
-					Name = card.CardName,
-					SetCode = card.SetId,
-					SetName = card.SetName,
-					Quantity = card.Quantity
-				})
-				.ToList(),
-			CollectionFilePathExtension = extension,
-		};
+		return new();
 	}
-
-	return null;
+	
+	if (!string.IsNullOrEmpty(inventory.Timestamp)) 
+	{
+		var inventoryTimestamp =
+			new DateTime(1965, 1, 1, 0, 0, 0, 0)
+			.AddSeconds(double.Parse(inventory.Timestamp));
+		Console.WriteLine($"Inventory timestamp: '{inventoryTimestamp}'");
+	}
+	
+	return new() 
+	{
+		Cards = inventory.Payload
+			.Select(card => new CardImport 
+			{
+				GroupId = card.Key,
+				Quantity = card.Value
+			})
+			.ToList() ?? [],
+		Timestamp = inventory.Timestamp 
+	};
 }
 
-string GetExportFilePath()
+string GetOutputFilePath(string timestamp)
 {
-	var exportFilePath = Path.Combine(
-		Path.GetDirectoryName(_options.CollectionFilePath),
-		$"{Path.GetFileNameWithoutExtension(_options.CollectionFilePath)}-{Guid.NewGuid()}.csv");
+	if (!string.IsNullOrEmpty(_options.OutputFilePath)) 
+	{
+		return Path.Combine(Path.GetDirectoryName(_options.OutputFilePath.Trim())!, $"collection-{timestamp}.csv") ;
+	}
+	
+	return Path.GetTempFileName();
+}
 
-	return exportFilePath.Trim();
+async Task<IEnumerable<Card17Lands>> Get17LandsCards() 
+{
+	Console.WriteLine("Loading 17Lands database");
+	var stream = await new HttpClient().GetStreamAsync("https://17lands-public.s3.amazonaws.com/analysis_data/cards/cards.csv");
+	using var reader = new StreamReader(stream);
+	using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
+	return csv.GetRecords<Card17Lands>().ToList();
+}
+
+IEnumerable<CardScryfall> GetScryfallCards() 
+{
+	Console.WriteLine("Loading Scryfall database from file");
+	using FileStream stream = File.OpenRead(_options.ScryfallJsonFilePath.Trim());
+	return JsonSerializer.Deserialize<List<CardScryfall>>(stream, _jsonSerializerOptions) ?? [];
 }

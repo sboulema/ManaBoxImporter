@@ -1,6 +1,6 @@
 The MIT License (MIT)
 
-Copyright (c) 2022 Samir Boulema
+Copyright (c) 2022 - 2024 Samir Boulema
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

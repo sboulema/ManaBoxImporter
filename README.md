@@ -1,28 +1,34 @@
 # ManaBox Importer
-A simple console application to transform a [Magic the Gathering Arena](https://magic.wizards.com/en/mtgarena) collection export made with [mtga-tracker-daemon](https://github.com/frcaton/mtga-tracker-daemon) to a [ManaBox](https://www.manabox.app/) compatible import.
+A console application to transform a [Magic the Gathering Arena](https://magic.wizards.com/en/mtgarena) collection export made with the [MTG Arena Pro Tracker](https://mtgarena.pro/mtga-pro-tracker/) to a [ManaBox](https://www.manabox.app/) compatible import.
 
 ## Example
-`dotnet run -- -c <path to json file>`
+`dotnet run -- -s <path to Scryfall json file>`
 
 ## Arguments
-| Name                 | Value  | Required                    | Description |
-|----------------------|--------|-----------------------------|-------------|
-| -c, --collection     | <path> | One of collection arguments | Path to json file containing your MTGA collection |
-| -v, --csv-collection | <path> | One of collection arguments | Path to csv file containing your MTGA collection |
-| -s, --scryfall       | <path> | False    | Path to json file containing all cards from Scryfall, If not given ManaBox Importer will use the Scryfall API
-| -l, --log            |        | False    | Enable writing errors to log file |
+| Name           | Value  | Required | Description |
+|----------------|--------|----------|-------------|
+| -s, --scryfall | <path> | True     | Path to json file containing all cards from Scryfall |
+| -o, --output   | <path> | False    | Path to the folder where the collection and log files will be exported |
+| -l, --log      |        | False    | Enable writing errors to log file |
 
-## Usages
+## Usage
 
-### Method 1, prefered usage, bit harder than method 2 but faster
-1. Create an export with mtga-tracker-daemon
-2. Download the Scryfall 'Default Cards' json from: [Scryfall Bulk Data](https://scryfall.com/docs/api/bulk-data)
-3. Transform the json file to a ManaBox compatible csv file
-4. Import csv file into ManaBox
-5. Profit!
+### Prerequisites
+1. Install the [MTG Arena Pro Tracker](https://mtgarena.pro/mtga-pro-tracker/)
+2. Start MTG Arena
+3. [Enable detailed logging in MTG Arena](https://draftsim.com/enable-detailed-logging-in-mtg-arena/)
+4. Start MTG Arena Pro Tracker
+5. Wait for the tracker to export data to the Player log
+6. Download the Scryfall 'Default Cards' json from: [Scryfall Bulk Data](https://scryfall.com/docs/api/bulk-data)
 
-### Method 2, simpler but slower
-1. Create an export with mtga-tracker-daemon
-2. Transform the json file to a ManaBox compatible csv file
+### Exporting collection
+1. Run ManaBox Importer with the path to the Scryfall json file
+2. Collection will be exported as csv file to the given output folder or a temp folder
 3. Import csv file into ManaBox
-4. Profit!
+4. Happy deck building!
+
+## Links
+- [17Lands Public Data](https://www.17lands.com/public_datasets)
+
+## Disclaimer
+This application is not produced, endorsed, supported, or affiliated with [SkillDevs](https://www.skilldevs.com/).
