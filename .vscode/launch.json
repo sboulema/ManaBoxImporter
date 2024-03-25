@@ -9,7 +9,7 @@
             "program": "${workspaceFolder}/bin/Debug/net8.0/ManaBoxImporter.dll",
             // "args": ["-c C:\\Users\\sboul\\Downloads\\collection.csv", "-l"],
             "args": ["-s C:\\Users\\sboul\\Downloads\\default-cards-20240324210707.json",
-                     "-o C:\\Users\\sboul\\Downloads\\collection-12.csv",
+                     "-o C:\\Users\\sboul\\Downloads",
                      "-l"],
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
@@ -23,7 +23,7 @@
             "program": "${workspaceFolder}/bin/Debug/net8.0/ManaBoxImporter.dll",
             "args": ["-s C:\\Users\\sboul\\Downloads\\default-cards-20240324210707.json",
                      "-p 9000",
-                     "-o C:\\Users\\sboul\\Downloads\\collection12.csv"],
+                     "-o C:\\Users\\sboul\\Downloads"],
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "stopAtEntry": false

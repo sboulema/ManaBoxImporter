@@ -196,6 +196,7 @@ async Task<ImportModel?> GetMtgaTrackerDaemonCollection()
 				Quantity = card.Quantity,
 			})
 			.ToList() ?? [],
+		Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),
 	};
 }
 

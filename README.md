@@ -19,7 +19,7 @@ A console application to transform a [Magic the Gathering Arena](https://magic.w
 #### Prerequisites
 1. Install the [MTGA Tracker Daemon](https://github.com/frcaton/mtga-tracker-daemon)
 2. Start MTG Arena
-3. Start MTGA Tracker Daemon as admin
+3. Start MTGA Tracker Daemon
 4. Download the Scryfall 'Default Cards' json from: [Scryfall Bulk Data](https://scryfall.com/docs/api/bulk-data)
 
 #### Exporting the collection
