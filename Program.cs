@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CommandLine;
@@ -6,7 +7,7 @@ using CsvHelper;
 using ManaBoxImporter.Models;
 using ManaBoxImporter.Models.Import;
 
-Console.WriteLine("ManaBoxImporter 1.9");
+Console.WriteLine("ManaBoxImporter 2.0");
 
 var _options = new Options();
 
@@ -100,75 +101,6 @@ collection = collection
 	.Where(collectionCard => collectionCard.ScryFallId != null)
 	.Concat(alchemyCollection)
 	.DistinctBy(collectioncard => collectioncard.ScryFallId);
-		
-	// .SelectMany(
-	// 	collectionCard => scryfallCards
-	// 		.Where(scryfallCard => collectionCard.GroupId == scryfallCard.ArenaId ||
-	// 							   collectionCard.Name == scryfallCard.Name),
-	// 	(collectionCard, scryfallCard) => new CardImport
-	// 	{
-	// 		GroupId = collectionCard.GroupId,
-	// 		Name = collectionCard.Name,
-	// 		Quantity = collectionCard.Quantity,
-	// 		SetCode = scryfallCard.SetCode,
-	// 		SetName = scryfallCard.SetName,
-	// 		CollectorNumber = scryfallCard.CollectorNumber,
-	// 		ScryFallId = scryfallCard.Id,
-	// 	});
-		
-// var collection2 =
-// 	from card in collection
-// 	from scryfallCard in scryfallCards
-// 	where card.GroupId == scryfallCard.ArenaId ||
-// 		  card.Name == scryfallCard.Name
-// 	select new CardImport 
-// 	{
-// 		GroupId = card.GroupId,
-// 		Name = card.Name,
-// 		Quantity = card.Quantity,
-// 		SetCode = scryfallCard.SetCode,
-// 		SetName = scryfallCard.SetName,
-// 		CollectorNumber = scryfallCard.CollectorNumber,
-// 		ScryFallId = scryfallCard.Id,
-// 	};	
-	
-
-// var collection = importModel.Cards
-// 	.Join(scryfallCards,
-// 		collectionCard => collectionCard.GroupId,
-// 		scryfallCard => scryfallCard.ArenaId,
-// 		(collectionCard, scryfallCard) => new CardImport 
-// 		{
-// 			Name = scryfallCard.Name,
-// 			SetCode = scryfallCard.SetCode,
-// 			SetName = scryfallCard.SetName,
-// 			CollectorNumber = scryfallCard.CollectorNumber,
-// 			ScryFallId = scryfallCard.Id,
-// 			Quantity = collectionCard.Quantity
-// 		})
-// 	.Where(card => !IsAlchemy(card));
-	
-// var collection = importModel.Cards
-// 	.GroupJoin(
-// 		cards17Lands,
-// 		collectionCard => collectionCard.GroupId,
-// 		card17Lands => card17Lands.ArenaId, 
-// 		(collectionCard, card17Lands) => new
-// 		{
-// 			CollectionCard = collectionCard,
-// 			Card17Lands = card17Lands
-// 		})
-// 	.SelectMany(
-// 		cardMatch => cardMatch.Card17Lands.DefaultIfEmpty(),
-// 		(cardMatch, card17Lands) => new CardImport 
-// 		{
-// 			GroupId = cardMatch.CollectionCard.GroupId,
-// 			Name = card17Lands?.Name ?? string.Empty,
-// 			SetCode = card17Lands?.SetCode ?? string.Empty,
-// 			Quantity = cardMatch.CollectionCard.Quantity
-// 		}
-// 	)
-// 	.Where(card => !IsAlchemy(card));	
 
 var outputFilePath = GetOutputFilePath(importModel.Timestamp);
 
@@ -201,6 +133,11 @@ async Task WriteLogFile(string outputFilePath)
 
 async Task<ImportModel?> GetCollection()
 {
+	if (_options.Port != null) 
+	{
+		return await GetMtgaTrackerDaemonCollection();
+	}
+	
 	var playerLogPath = "%appdata%\\..\\LocalLow\\Wizards Of The Coast\\MTGA\\Player.log";
 	playerLogPath = Environment.ExpandEnvironmentVariables(playerLogPath);
 	var playerLogLines = await File.ReadAllLinesAsync(playerLogPath);
@@ -238,6 +175,27 @@ async Task<ImportModel?> GetCollection()
 			})
 			.ToList() ?? [],
 		Timestamp = inventory.Timestamp 
+	};
+}
+
+async Task<ImportModel?> GetMtgaTrackerDaemonCollection()
+{
+	var inventory = await new HttpClient().GetFromJsonAsync<MTGATrackerDaemonInventoryImport>($"http://localhost:{_options.Port}/cards");
+	
+	if (inventory == null) 
+	{
+		return new();
+	}
+	
+	return new() 
+	{
+		Cards = inventory.Cards
+			.Select(card => new CardImport 
+			{
+				GroupId = card.GroupId,
+				Quantity = card.Quantity,
+			})
+			.ToList() ?? [],
 	};
 }
 

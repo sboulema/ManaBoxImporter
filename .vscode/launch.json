@@ -8,9 +8,22 @@
             "preLaunchTask": "build",
             "program": "${workspaceFolder}/bin/Debug/net8.0/ManaBoxImporter.dll",
             // "args": ["-c C:\\Users\\sboul\\Downloads\\collection.csv", "-l"],
-            "args": ["-s C:\\Users\\sboul\\Downloads\\default-cards-20240225100458.json",
+            "args": ["-s C:\\Users\\sboul\\Downloads\\default-cards-20240324210707.json",
                      "-o C:\\Users\\sboul\\Downloads\\collection-12.csv",
                      "-l"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "stopAtEntry": false
+        },
+        {
+            "name": "MTGA Tracker Daemon",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/bin/Debug/net8.0/ManaBoxImporter.dll",
+            "args": ["-s C:\\Users\\sboul\\Downloads\\default-cards-20240324210707.json",
+                     "-p 9000",
+                     "-o C:\\Users\\sboul\\Downloads\\collection12.csv"],
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "stopAtEntry": false
