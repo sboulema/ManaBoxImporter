@@ -1,8 +1,8 @@
 {
   "profiles": {
-    "ManaBoxImporter": {
+    "ManaBoxImporter - Method 1": {
       "commandName": "Project",
-      "commandLineArgs": "-v \"C:\\Users\\sboulema\\Downloads\\collection_2024-01-25.csv\""
+      "commandLineArgs": "--port 6842"
     }
   }
 }

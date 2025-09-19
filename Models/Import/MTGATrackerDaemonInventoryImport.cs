@@ -15,4 +15,10 @@ public class MTGATrackerDaemonCardImport
 
 	[JsonPropertyName("grpId")]
 	public int? GroupId { get; set; }
+
+	[JsonPropertyName("title")]
+	public string Title { get; set; } = string.Empty;
+
+    [JsonPropertyName("expansionCode")]
+    public string ExpansionCode { get; set; } = string.Empty;
 }
