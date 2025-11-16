@@ -1,6 +1,6 @@
-namespace ManaBoxImporter.Models.Import;
+namespace ManaBoxImporter.Models.MtgaPro;
 
-public class MTGAProInventoryImport 
+public class MtgaProInventoryImport 
 {
 	public string Timestamp { get; set; } = string.Empty;
 	

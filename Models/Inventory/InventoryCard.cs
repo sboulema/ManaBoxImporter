@@ -1,8 +1,8 @@
 using CsvHelper.Configuration.Attributes;
 
-namespace ManaBoxImporter.Models.Import;
+namespace ManaBoxImporter.Models.Inventory;
 
-public class CardImport
+public class InventoryCard
 {
     public string Name { get; set; } = string.Empty;
 

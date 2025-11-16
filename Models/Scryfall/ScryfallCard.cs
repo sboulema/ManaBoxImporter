@@ -1,8 +1,8 @@
 using System.Text.Json.Serialization;
 
-namespace ManaBoxImporter.Models;
+namespace ManaBoxImporter.Models.Scryfall;
 
-public class CardScryfall
+public class ScryfallCard
 {
 	[JsonPropertyName("id")]
 	public Guid Id { get; set; }

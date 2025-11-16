@@ -21,7 +21,7 @@ to a [ManaBox](https://www.manabox.app/) compatible import.
 Easiest option to get started
 
 #### Prerequisites
-1. Install the [MTGA Tracker Daemon](https://github.com/frcaton/mtga-tracker-daemon) v1.0.8+
+1. Install the [MTGA Tracker Daemon](https://github.com/frcaton/mtga-tracker-daemon)
 2. Start MTG Arena
 3. Start MTGA Tracker Daemon as administrator
 
@@ -31,22 +31,7 @@ Easiest option to get started
 3. Import csv file into ManaBox
 4. Happy deck building!
 
-### Method 2 (MTGA Tracker Daemon + Scryfall + 17Lands)
-Richer export with more details
-
-#### Prerequisites
-1. Install the [MTGA Tracker Daemon](https://github.com/frcaton/mtga-tracker-daemon)
-2. Start MTG Arena
-3. Start MTGA Tracker Daemon as administrator
-4. Download the Scryfall 'Default Cards' json from: [Scryfall Bulk Data](https://scryfall.com/docs/api/bulk-data)
-
-#### Exporting the collection
-1. Run ManaBox Importer with the path to the Scryfall json file and the port number used when starting MTGA Tracker Daemon
-2. Collection will be exported as csv file to the given output folder or a temp folder
-3. Import csv file into ManaBox
-4. Happy deck building!
-
-### Method 3 (MTGA Arena Pro Tracker)
+### Method 2 (MTGA Arena Pro Tracker)
 Alternative option if you don't want to use MTGA Tracker Daemon
 
 #### Prerequisites
@@ -64,6 +49,7 @@ Alternative option if you don't want to use MTGA Tracker Daemon
 4. Happy deck building!
 
 ## Links
+- [Scryfall Bulk Data API](https://api.scryfall.com/bulk-data)
 - [17Lands Public Data](https://www.17lands.com/public_datasets)
 
 ## Disclaimer

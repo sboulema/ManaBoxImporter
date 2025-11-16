@@ -1,14 +1,8 @@
 using System.Text.Json.Serialization;
 
-namespace ManaBoxImporter.Models.Import;
+namespace ManaBoxImporter.Models.MtgaTrackerDaemon;
 
-public class MTGATrackerDaemonInventoryImport 
-{
-	[JsonPropertyName("cards")]
-	public List<MTGATrackerDaemonCardImport> Cards { get; set; } = [];
-}
-
-public class MTGATrackerDaemonCardImport 
+public class MtgaTrackerDaemonCard 
 {
 	[JsonPropertyName("owned")]
 	public int Quantity { get; set; }
